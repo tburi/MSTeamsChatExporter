@@ -152,11 +152,10 @@ $StartTime = Get-Date
 foreach ($thread in $chats) {
     #50 is the maximum allowed with the beta api
     $conversationUri = "https://graph.microsoft.com/v1.0/me/chats/" + $thread.id + "/messages?top=50"
-
     $elapsedTime = (Get-Date) - $StartTime
     
     Write-Verbose ("Script running for " + $elapsedTime.TotalSeconds + " seconds.")
-    if ($elapsedTime.TotalMinutes -gt 10) {
+    if ($elapsedTime.TotalMinutes -gt 30) {
         Write-Host -ForegroundColor Cyan "Reauthenticating with refresh token..."
         $tokenOutput = Connect-DeviceCodeAPI $clientId $tenantId $refresh_token
         $token = $tokenOutput.access_token
@@ -210,6 +209,20 @@ foreach ($thread in $chats) {
         Write-Verbose $conversationUri 
 
         foreach ($message in $conversation) {
+
+            $elapsedTime = (Get-Date) - $StartTime
+    
+            Write-Verbose ("Script running for " + $elapsedTime.TotalSeconds + " seconds.")
+            if ($elapsedTime.TotalMinutes -gt 30) {
+                Write-Host -ForegroundColor Cyan "Reauthenticating with refresh token..."
+                $tokenOutput = Connect-DeviceCodeAPI $clientId $tenantId $refresh_token
+                $token = $tokenOutput.access_token
+                $refresh_token = $tokenOutput.refresh_token
+                $accessToken = ConvertTo-SecureString $token -AsPlainText -Force
+                $StartTime = $(Get-Date)
+                Start-Sleep 5
+            }
+
             $userPhotoUPN = ($message.from.user.displayName -replace " ", ".") + "@" + $domain
             $profilefile = Join-Path -Path $ImagesFolder -ChildPath "$userPhotoUPN.jpg"
             if (-not(Test-Path $profilefile)) {
