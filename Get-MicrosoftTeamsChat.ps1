@@ -34,7 +34,9 @@ Param(
     [Parameter(Mandatory = $true, HelpMessage = "Export location of where the HTML files will be saved.")] [string] $ExportFolder,
     [Parameter(Mandatory = $true, HelpMessage = "The client id of the Azure AD App Registration")] [string] $clientId,
     [Parameter(Mandatory = $true, HelpMessage = "The tenant id of the Azure AD environment the user logs into")] [string] $tenantId,
-    [Parameter(Mandatory = $true, HelpMessage = "The domain name of the UPNs for users in your tenant. E.g. contoso.com")] [string] $domain
+    [Parameter(Mandatory = $true, HelpMessage = "The domain name of the UPNs for users in your tenant. E.g. contoso.com")] [string] $domain,
+    [Parameter(Mandatory = $false, HelpMessage = "Filter for chats, use { $.topic -eq topicname } to filter for specific topic")] [scriptblock] $filter,
+    [Parameter(Mandatory = $false, HelpMessage = "Skipp the first x")] [int] $skip
 )
 
 #################################
@@ -136,6 +138,12 @@ if ($null -ne $firstChat.'@odata.nextLink') {
 }
 
 $chats = $allChats.value | Sort-Object createdDateTime -Descending
+if ($filter) {
+    $chats = $chats | Where-Object $filter
+}
+if ($skip){
+    $chats = $chats | Select-Object -Skip $skip
+}
 Write-Host ("`r`n" + $chats.count + " possible chat threads found.`r`n")
 
 $threadCount = 0
@@ -148,7 +156,7 @@ foreach ($thread in $chats) {
     $elapsedTime = (Get-Date) - $StartTime
     
     Write-Verbose ("Script running for " + $elapsedTime.TotalSeconds + " seconds.")
-    if ($elapsedTime.TotalMinutes -gt 30) {
+    if ($elapsedTime.TotalMinutes -gt 10) {
         Write-Host -ForegroundColor Cyan "Reauthenticating with refresh token..."
         $tokenOutput = Connect-DeviceCodeAPI $clientId $tenantId $refresh_token
         $token = $tokenOutput.access_token
